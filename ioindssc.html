@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veri Duzenleme ve Görselleştirme</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            background: linear-gradient(to right, #f5f7fa, #c3cfe2);
+            color: #333;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #4caf50;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background: #0066cc;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background: #f2f2f2;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            display: none;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Veri Duzenleme ve Görselleştirme</h1>
+        <p class="description">Bu platformda öğrenci veri seti üzerinde işlemler yapabilir, eksik verileri doldurabilir, boy dönüşümü yapabilir ve verileri görselleştirebilirsiniz.</p>
+
+        <h2>Veri Seti</h2>
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th>İsim</th>
+                    <th>Yaş</th>
+                    <th>Boy (cm)</th>
+                    <th>Günlük Ders Çalışma (saat)</th>
+                    <th>Günlük Telefon Kullanımı (saat)</th>
+                    <th>Uyku Süresi (saat)</th>
+                    <th>Spor Aktivitesi (saat)</th>
+                    <th>Okuma Süresi (saat)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="controls">
+            <h3>Eksik Değerleri Yönet</h3>
+            <button class="btn" id="fill-missing-mean">Eksikleri Ortalama ile Doldur</button>
+            <button class="btn" id="remove-missing">Eksik Değerli Satırları Sil</button>
+
+            <h3>Boy Dönüşümü</h3>
+            <button class="btn" id="convert-to-meters">Boy (cm) &rarr; Boy (m)</button>
+
+            <h3>Veri Temizleme</h3>
+            <button class="btn" id="clean-invalid-data">Uygunsuz Verileri Temizle</button>
+
+            <h3>Grafikler</h3>
+            <button class="btn" id="draw-bar-chart">Sütun Grafiği (Ders Çalışma)</button>
+            <button class="btn" id="draw-pie-chart">Pasta Grafiği (Uyku Süresi)</button>
+            <button class="btn" id="draw-line-chart">Çizgi Grafiği (Spor Aktivitesi)</button>
+        </div>
+
+        <div id="charts">
+            <div class="chart-container" id="barChartContainer">
+                <canvas id="barChart"></canvas>
+            </div>
+            <div class="chart-container" id="pieChartContainer">
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-container" id="lineChartContainer">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let ogrenciler = [
+            {"isim":"Ali","yas":13,"boy":155,"gunlukDersCalismaSaati":2,"gunlukTelefonKullanimiSaati":1,"uykuSuresi":8,"sporAktivitesi":1,"okumaSuresi":0.5},
+            {"isim":"Ayşe","yas":12,"boy":140,"gunlukDersCalismaSaati":null,"gunlukTelefonKullanimiSaati":3,"uykuSuresi":7,"sporAktivitesi":1.5,"okumaSuresi":0.7},
+            {"isim":"Mehmet","yas":14,"boy":160,"gunlukDersCalismaSaati":5,"gunlukTelefonKullanimiSaati":10,"uykuSuresi":6,"sporAktivitesi":0,"okumaSuresi":2},
+            {"isim":"Zeynep","yas":13,"boy":150,"gunlukDersCalismaSaati":1,"gunlukTelefonKullanimiSaati":2,"uykuSuresi":9,"sporAktivitesi":2,"okumaSuresi":1.5},
+            {"isim":"Melisa","yas":10,"boy":130,"gunlukDersCalismaSaati":4,"gunlukTelefonKullanimiSaati":5,"uykuSuresi":7,"sporAktivitesi":2,"okumaSuresi":0.5},
+            {"isim":"Ada","yas":9,"boy":120,"gunlukDersCalismaSaati":2,"gunlukTelefonKullanimiSaati":2,"uykuSuresi":6,"sporAktivitesi":1,"okumaSuresi":0},
+            {"isim":"Selçuk","yas":11,"boy":140,"gunlukDersCalismaSaati":3,"gunlukTelefonKullanimiSaati":3,"uykuSuresi":8,"sporAktivitesi":1.5,"okumaSuresi":1},
+            {"isim":"Melisa","yas":8,"boy":110,"gunlukDersCalismaSaati":1,"gunlukTelefonKullanimiSaati":1,"uykuSuresi":5,"sporAktivitesi":1,"okumaSuresi":0.5}
+        ];
+
+        function renderTable() {
+            const tbody = document.querySelector('#data-table tbody');
+            tbody.innerHTML = "";
+            ogrenciler.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.isim}</td>
+                    <td>${row.yas}</td>
+                    <td>${row.boy}</td>
+                    <td>${row.gunlukDersCalismaSaati || 'Eksik'}</td>
+                    <td>${row.gunlukTelefonKullanimiSaati}</td>
+                    <td>${row.uykuSuresi || 'Eksik'}</td>
+                    <td>${row.sporAktivitesi}</td>
+                    <td>${row.okumaSuresi}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function hideAllCharts() {
+            document.getElementById('barChartContainer').style.display = 'none';
+            document.getElementById('pieChartContainer').style.display = 'none';
+            document.getElementById('lineChartContainer').style.display = 'none';
+        }
+
+        function drawBarChart() {
+            hideAllCharts();
+            document.getElementById('barChartContainer').style.display = 'block';
+            const ctx = document.getElementById('barChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ogrenciler.map(o => o.isim),
+                    datasets: [{
+                        label: 'Günlük Ders Çalışma (saat)',
+                        data: ogrenciler.map(o => o.gunlukDersCalismaSaati || 0),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    }]
+                }
+            });
+        }
+
+        function drawPieChart() {
+            hideAllCharts();
+            document.getElementById('pieChartContainer').style.display = 'block';
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            const uykuData = ogrenciler.map(o => o.uykuSuresi || 0);
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ogrenciler.map(o => o.isim),
+                    datasets: [{
+                        data: uykuData,
+                        backgroundColor: ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99']
+                    }]
+                }
+            });
+        }
+
+        function drawLineChart() {
+            hideAllCharts();
+            document.getElementById('lineChartContainer').style.display = 'block';
+            const ctx = document.getElementById('lineChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ogrenciler.map(o => o.isim),
+                    datasets: [{
+                        label: 'Spor Aktivitesi (saat)',
+                        data: ogrenciler.map(o => o.sporAktivitesi || 0),
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        fill: false
+                    }]
+                }
+            });
+        }
+
+        renderTable();
+
+        document.getElementById('fill-missing-mean').addEventListener('click', () => {
+            const dersValues = ogrenciler
+                .map(o => o.gunlukDersCalismaSaati)
+                .filter(v => v != null);
+            const mean = dersValues.reduce((a, b) => a + b, 0) / dersValues.length;
+
+            ogrenciler.forEach(o => {
+                if (o.gunlukDersCalismaSaati == null) {
+                    o.gunlukDersCalismaSaati = parseFloat(mean.toFixed(2));
+                }
+            });
+
+            renderTable();
+        });
+
+        document.getElementById('remove-missing').addEventListener('click', () => {
+            ogrenciler = ogrenciler.filter(o =>
+                Object.values(o).every(v => v != null)
+            );
+            renderTable();
+        });
+
+        document.getElementById('convert-to-meters').addEventListener('click', () => {
+            ogrenciler.forEach(o => {
+                if (typeof o.boy === 'number') {
+                    o.boy = parseFloat((o.boy / 100).toFixed(2));
+                }
+            });
+            renderTable();
+        });
+
+        document.getElementById('clean-invalid-data').addEventListener('click', () => {
+            ogrenciler = ogrenciler.filter(o => !["Melisa", "Ada"].includes(o.isim));
+            renderTable();
+        });
+
+        document.getElementById('draw-bar-chart').addEventListener('click', drawBarChart);
+        document.getElementById('draw-pie-chart').addEventListener('click', drawPieChart);
+        document.getElementById('draw-line-chart').addEventListener('click', drawLineChart);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
